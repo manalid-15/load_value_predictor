@@ -15,6 +15,7 @@ CONFIG_ROOT := $(PIN_ROOT)/source/tools/Config
 else
 CONFIG_ROOT := ../Config
 endif
+TOOLS += linear_search
 include $(CONFIG_ROOT)/makefile.config
 include makefile.rules
 include $(TOOLS_ROOT)/Config/makefile.default.rules

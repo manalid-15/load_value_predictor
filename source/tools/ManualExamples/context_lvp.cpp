@@ -75,8 +75,8 @@ public:
 
         else {
             valueHistoryTable[loadPC].values[0] = actualValue;
-	    for (int i = 1; i < CONTEXT_SIZE; i++) {
-                valueHistoryTable[loadPC].values[i] = 0;
+            for (int i = 1; i < CONTEXT_SIZE; i++) {
+                    valueHistoryTable[loadPC].values[i] = 0;
             }
             valueHistoryTable[loadPC].nextIndex = 1;
             valuePredictTable[loadPC] = actualValue;
@@ -100,9 +100,9 @@ VOID docount() {
     if (iCount % SIMULATOR_HEARTBEAT_INSTR_NUM == 0) {
         std::cerr << "Executed " << iCount << " instructions." << endl;
     }
-    if (iCount == STOP_INSTR_NUM) {
-        PIN_Detach();
-    }
+    // if (iCount == STOP_INSTR_NUM) {
+    //     PIN_Detach();
+    // }
 }
 
 VOID TerminateSimulationHandler(VOID *v) {
@@ -112,7 +112,6 @@ VOID TerminateSimulationHandler(VOID *v) {
     std::cerr << "Prediction Accuracy: " 
               << ((totalPredictions > 0) ? (100.0 * correctPredictionCount / totalPredictions) : 0) 
               << "%" << endl;
-    std::exit(EXIT_SUCCESS);
 }
 
 VOID Fini(int code, VOID * v) {

@@ -16,6 +16,7 @@ else
 CONFIG_ROOT := ../Config
 endif
 TOOLS += context_lvp
+# TOOLS += storeToLoad_lvp
 include $(CONFIG_ROOT)/makefile.config
 include makefile.rules
 include $(TOOLS_ROOT)/Config/makefile.default.rules

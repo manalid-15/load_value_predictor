@@ -68,18 +68,13 @@ VOID docount() {
 VOID TerminateSimulationHandler(VOID *v) {
     OutFile.setf(ios::showbase);
     OutFile.close();
-    std::cerr << "\nSimulation reached " << STOP_INSTR_NUM << " instructions." << endl;
+    std::cerr << "\nSimulation reached " << iCount << " instructions." << endl;
     std::cerr << "Prediction Accuracy: " 
               << ((totalPredictions > 0) ? (100.0 * correctPredictionCount / totalPredictions) : 0) 
               << "%" << endl;
 }
 
 VOID Fini(int code, VOID * v) {
-    std::cerr << "\nSimulation reached " << STOP_INSTR_NUM << " instructions." << endl;
-    std::cerr << "Prediction Accuracy: " 
-              << ((totalPredictions > 0) ? (100.0 * correctPredictionCount / totalPredictions) : 0) 
-              << "%" << endl;
-
     TerminateSimulationHandler(v);
 }
 
@@ -102,8 +97,9 @@ VOID AtLoadInstruction(ADDRINT loadPC, ADDRINT memoryAddr) {
     if (predictedValue == actualValue) {
         correctPredictionCount++;
     }
-
-    loadValuePredictor->train(memoryAddr, actualValue);
+    else {
+        loadValuePredictor->train(memoryAddr, actualValue);
+    }
     
     totalPredictions++;
 }

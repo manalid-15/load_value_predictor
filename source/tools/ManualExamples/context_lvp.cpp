@@ -28,7 +28,7 @@ private:
     std::unordered_map<ADDRINT, VHTEntry> valueHistoryTable;
 
     //value predict table to predcit the final value of the load
-    std::unordered_map<UINT64, UINT64> valuePredictTable;
+    std::unordered_map<ADDRINT, UINT64> valuePredictTable;
 
 public:
     LoadValuePredictor() {}
@@ -36,7 +36,7 @@ public:
     UINT64 getPrediction(ADDRINT loadPC) {
         if (valueHistoryTable.find(loadPC) != valueHistoryTable.end()) {
             // generate the hash value to index in the value prediction table
-            UINT64 hashFun = 0;
+            ADDRINT hashFun = 0;
             for (int i = 0; i < CONTEXT_SIZE; i++) {
                 hashFun = valueHistoryTable[loadPC].values[i] ^ hashFun;  // XOR hash function 
             }
@@ -115,11 +115,6 @@ VOID TerminateSimulationHandler(VOID *v) {
 }
 
 VOID Fini(int code, VOID * v) {
-    std::cerr << "\nSimulation reached " << STOP_INSTR_NUM << " instructions." << endl;
-    std::cerr << "Prediction Accuracy: " 
-              << ((totalPredictions > 0) ? (100.0 * correctPredictionCount / totalPredictions) : 0) 
-              << "%" << endl;
-
     TerminateSimulationHandler(v);
 }
 

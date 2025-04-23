@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include "pin.H"
 #include <array>
+#include <queue>
 
 using std::cerr;
 using std::endl;
@@ -15,6 +16,7 @@ using std::array;
 #define STOP_INSTR_NUM 1024
 #define SIMULATOR_HEARTBEAT_INSTR_NUM 100
 #define CONTEXT_SIZE 4
+#define MAX_TABLE_SIZE 1024
 
 class LoadValuePredictor {
 private:
@@ -29,6 +31,27 @@ private:
 
     //value predict table to predcit the final value of the load
     std::unordered_map<ADDRINT, UINT64> valuePredictTable;
+
+    // queue to implement the FIFO replacement policy in the table 
+    std::queue<ADDRINT> insertionQueue;
+
+    void replacementPolicy(UINT64 max_table_size, std::unordered_map<ADDRINT, UINT64> &table,    
+        std::queue<ADDRINT> &fifo_queue, ADDRINT hashIndex, UINT64 actualValue) {
+        // if the given hash index does not exist in the table then evict upon exceeding the table size
+        if (table.find(hashIndex) == table.end()) {
+            if (table.size() >= max_table_size) {
+                ADDRINT evictHashIndex = fifo_queue.front();
+                fifo_queue.pop();
+                UINT64 evictedValue_context = table[evictHashIndex];
+                table.erase(evictHashIndex);    // FIFO replacement policy
+                std::cerr << "[Evict] PC: 0x" << std::hex << evictHashIndex 
+                        << ", Old Value: 0x" << evictedValue_context 
+                        << " | New Entry -> PC: 0x" << hashIndex << std::dec
+                        << ", Value: 0x" << actualValue << std::endl;
+            }
+            fifo_queue.push(hashIndex);    // insert the new value at the end of the queue
+            }
+        }
 
 public:
     LoadValuePredictor() {}
@@ -68,17 +91,25 @@ public:
             for (int i = 0; i < CONTEXT_SIZE; i++) {
                 hashFun_train = entry.values[i] ^ hashFun_train;  // XOR hash function
             }
+            // check if size of the valuePredictTable is full and perform FIFO replacement
+            replacementPolicy(MAX_TABLE_SIZE, valuePredictTable, insertionQueue, hashFun_train, actualValue);
 
             // assign actual value in the VPT
             valuePredictTable[hashFun_train] = actualValue;
         }
 
         else {
+            // infinite size valueHistoryTable
             valueHistoryTable[loadPC].values[0] = actualValue;
             for (int i = 1; i < CONTEXT_SIZE; i++) {
                     valueHistoryTable[loadPC].values[i] = 0;
             }
             valueHistoryTable[loadPC].nextIndex = 1;
+
+            // check if size of the valuePredictTable is full and perform FIFO replacement
+            // finite size = 1024 valuePredictTable
+            replacementPolicy(MAX_TABLE_SIZE, valuePredictTable, insertionQueue, loadPC, actualValue);
+
             valuePredictTable[loadPC] = actualValue;
         }
     }

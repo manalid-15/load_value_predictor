@@ -42,7 +42,7 @@ private:
     std::string lastUsedPredictor;
  
 
-    void replacementPolicy(int max_table_size, std::unordered_map<ADDRINT, UINT64> &table,    
+    void replacementPolicy(UINT64 max_table_size, std::unordered_map<ADDRINT, UINT64> &table,    
                             std::queue<ADDRINT> &fifo_queue, ADDRINT hashIndex, UINT64 actualValue) {
         // if the given hash index does not exist in the table then evict upon exceeding the table size
         if (table.find(hashIndex) == table.end()) {
@@ -133,6 +133,7 @@ public:
         }
     }
 
+    // function to calculate the penalty
     void confidenceUpdate(UINT64 actualValue, UINT64 predictedValue) {
         if (predictedValue == actualValue) {
             // increment the confidence counter for the predictor by 1

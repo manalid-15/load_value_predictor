@@ -1,0 +1,6 @@
+
+--- Summary ---
+Total Loads:  1157344
+Correct Predictions: 776276
+Incorrect Predictions: 381068
+Hit Rate:     67.0739 %

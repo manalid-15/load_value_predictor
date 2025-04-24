@@ -7,8 +7,10 @@
 int main() {
     std::array<uint64_t, 1024> store_array = {};
 
-    for (int i=0; i < 1024; i++) {
-        store_array[i] = store_array[i] + i;
+    store_array[0] = 0;
+    
+    for (int i=1; i < 1024; i++) {
+        store_array[i] = store_array[i-1] + i;
     }
 
     return 0;

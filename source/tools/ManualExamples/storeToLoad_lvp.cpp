@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include "pin.H"
 #include <array>
+#include <queue>
 
 using std::cerr;
 using std::endl;
@@ -14,15 +15,35 @@ using std::array;
 
 #define STOP_INSTR_NUM 1024
 #define SIMULATOR_HEARTBEAT_INSTR_NUM 100
+#define MAX_TABLE_SIZE 1024
 
-class LoadValuePredictor {
+class StoreToLoadValuePredictor {
 private:
 
     // table to store the store value of memory locations
     std::unordered_map<ADDRINT, UINT64> storeValueTable;
+    std::queue<ADDRINT> insertionQueue;
+
+    void replacementPolicy(UINT64 max_table_size, std::unordered_map<ADDRINT, UINT64> &table,    
+        std::queue<ADDRINT> &fifo_queue, ADDRINT hashIndex, UINT64 actualValue) {
+        // if the given hash index does not exist in the table then evict upon exceeding the table size
+        if (table.find(hashIndex) == table.end()) {
+            if (table.size() >= max_table_size) {
+                ADDRINT evictHashIndex = fifo_queue.front();
+                fifo_queue.pop();
+                UINT64 evictedValue_context = table[evictHashIndex];
+                table.erase(evictHashIndex);    // FIFO replacement policy
+                std::cerr << "[Evict] PC: 0x" << std::hex << evictHashIndex 
+                            << ", Old Value: 0x" << evictedValue_context 
+                            << " | New Entry -> PC: 0x" << hashIndex << std::dec
+                            << ", Value: 0x" << actualValue << std::endl;
+            }
+            fifo_queue.push(hashIndex);    // insert the new value at the end of the queue
+        }
+    }
 
 public:
-    LoadValuePredictor() {}
+    StoreToLoadValuePredictor() {}
 
     // store the values for the memory locations of store instructions in the table
     VOID RecordStoreVal(ADDRINT addr, UINT64 val) {
@@ -36,15 +57,17 @@ public:
         }
         return 0; // Default prediction
     }
-  
+
     // add the value to the value predict table and value histoy table on misprediction
     // or in case where the loadPC does not exist in the value history table 
     void train(ADDRINT memoryAddr, UINT64 actualValue) {
+        replacementPolicy(MAX_TABLE_SIZE, storeValueTable,  insertionQueue, memoryAddr, actualValue);
+    
         storeValueTable[memoryAddr] = actualValue;
     }
 };
 
-LoadValuePredictor *loadValuePredictor;
+StoreToLoadValuePredictor *storeToLoadValuePredictor;
 
 ofstream OutFile;
 
@@ -89,7 +112,7 @@ VOID AtLoadInstruction(ADDRINT loadPC, ADDRINT memoryAddr) {
         return;
     }
 
-    UINT64 predictedValue = loadValuePredictor->getPrediction(memoryAddr);
+    UINT64 predictedValue = storeToLoadValuePredictor->getPrediction(memoryAddr);
 
     std::cerr << "PC: " << std::hex << loadPC << " | Memory Address: " << memoryAddr << " | Predicted: " 
     << predictedValue << " | Actual: " << actualValue << std::dec << std::endl;
@@ -98,7 +121,7 @@ VOID AtLoadInstruction(ADDRINT loadPC, ADDRINT memoryAddr) {
         correctPredictionCount++;
     }
     else {
-        loadValuePredictor->train(memoryAddr, actualValue);
+        storeToLoadValuePredictor->train(memoryAddr, actualValue);
     }
     
     totalPredictions++;
@@ -107,14 +130,11 @@ VOID AtLoadInstruction(ADDRINT loadPC, ADDRINT memoryAddr) {
 // wrapper function to store the store value in the table
 VOID AtStoreInstruction(ADDRINT memoryAddr, UINT64 val) {
     // Check if the instruction is store instruction
-    loadValuePredictor->RecordStoreVal(memoryAddr, val);
+    storeToLoadValuePredictor->RecordStoreVal(memoryAddr, val);
 }
 
 // Use memory address to manually fetch values instead of IARG_REG_VALUE
 VOID Instruction(INS ins, VOID *v) {
-    // std::string disasm = INS_Disassemble(ins);
-    // std::cout << "Instruction: " << disasm << std::endl;
-
     INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)docount, IARG_END);
 
     // wrapper function get get prediction and store updated values in the lookup table
@@ -133,7 +153,6 @@ VOID Instruction(INS ins, VOID *v) {
                 INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)AtStoreInstruction,
                 IARG_MEMORYWRITE_EA, IARG_REG_VALUE, reg, IARG_END);
             }
-            // std::cerr << "Store value from register: " << reg << std::endl;
         }
         // if the store instruction is storing the value from immediate value
         else if (INS_OperandIsImmediate(ins, 1)) {
@@ -156,7 +175,7 @@ INT32 Usage() {
 int main(int argc, char * argv[]) {
     if (PIN_Init(argc, argv)) return Usage();
 
-    loadValuePredictor = new LoadValuePredictor();
+    storeToLoadValuePredictor = new StoreToLoadValuePredictor();
     
     std::cerr << "Running load-store load value predictor simulation..." << std::endl;
     std::cerr << "Max Instructions: " << STOP_INSTR_NUM << std::endl;

@@ -18,7 +18,7 @@ using std::array;
 #define CONTEXT_SIZE 4
 #define MAX_TABLE_SIZE 1024
 
-class LoadValuePredictor {
+class ContextLoadValuePredictor {
 private:
     // structure for storing the VHT entries and index
     struct VHTEntry {
@@ -54,7 +54,7 @@ private:
         }
 
 public:
-    LoadValuePredictor() {}
+    ContextLoadValuePredictor() {}
 
     UINT64 getPrediction(ADDRINT loadPC) {
         if (valueHistoryTable.find(loadPC) != valueHistoryTable.end()) {
@@ -115,7 +115,7 @@ public:
     }
 };
 
-LoadValuePredictor *loadValuePredictor;
+ContextLoadValuePredictor *contextLoadValuePredictor;
 
 ofstream OutFile;
 
@@ -160,7 +160,7 @@ VOID AtLoadInstruction(ADDRINT loadPC, ADDRINT memoryAddr) {
         return;
     }
 
-    UINT64 predictedValue = loadValuePredictor->getPrediction(loadPC);
+    UINT64 predictedValue = contextLoadValuePredictor->getPrediction(loadPC);
 
     std::cerr << "PC: " << std::hex << loadPC << " | Predicted: " 
     << predictedValue << " | Actual: " << actualValue << std::dec << std::endl;
@@ -169,7 +169,7 @@ VOID AtLoadInstruction(ADDRINT loadPC, ADDRINT memoryAddr) {
         correctPredictionCount++;
     }
 
-    loadValuePredictor->train(loadPC, actualValue);
+    contextLoadValuePredictor->train(loadPC, actualValue);
     
     totalPredictions++;
 }
@@ -193,7 +193,7 @@ INT32 Usage() {
 int main(int argc, char * argv[]) {
     if (PIN_Init(argc, argv)) return Usage();
 
-    loadValuePredictor = new LoadValuePredictor();
+    contextLoadValuePredictor = new ContextLoadValuePredictor();
     
     std::cerr << "Running context-based load value predictor simulation..." << std::endl;
     std::cerr << "Max Instructions: " << STOP_INSTR_NUM << std::endl;
